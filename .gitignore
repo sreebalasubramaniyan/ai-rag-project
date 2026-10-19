@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Environments & Secrets
+.env
+.env.*
+!.env.example
+.venv/
+env/
+venv/
+ENV/
+
+# Data & Database storage
+data/
+chroma_db/
+tests/sample_data/chroma_*/
+*.db
+*.sqlite3
+*.bin
+
+# Logs & OS
+*.log
+.DS_Store
+Thumbs.db

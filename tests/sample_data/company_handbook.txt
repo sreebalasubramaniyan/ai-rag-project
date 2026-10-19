@@ -1,0 +1,7 @@
+ACME ENTERPRISE KNOWLEDGE POLICY
+
+Section 1: Data Retention
+All customer records must be retained for exactly seven years following contract completion. Records older than seven years must be permanently expunged according to corporate compliance guidelines.
+
+Section 2: Security Protocols
+Multi-factor authentication (MFA) is mandatory for all employee access to enterprise databases. Any hardware token loss must be reported to the IT Security Desk within two hours.

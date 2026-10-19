@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enterprise Knowledge RAG Console</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-badge">PATENT ARCHITECTURE</div>
+        <h1>Dual-Stage Privacy Enforcement for Fully Offline Enterprise RAG</h1>
+        <p class="header-subtitle">Query-Adaptive Context Filtering &amp; Output Leakage Prevention (Zero Cloud Egress)</p>
+      </div>
+
+      <!-- Mode Switcher (Cloud vs Local Offline Privacy) -->
+      <div class="header-center">
+        <div class="provider-switch-wrapper">
+          <div class="provider-switch" id="provider-switch" role="group" aria-label="AI Provider Mode">
+            <button type="button" class="provider-btn" id="btn-provider-openrouter" data-provider="openrouter">
+              Free Online (OpenRouter)
+            </button>
+            <button type="button" class="provider-btn active" id="btn-provider-gemini" data-provider="gemini">
+              Cloud (Gemini)
+            </button>
+            <button type="button" class="provider-btn" id="btn-provider-ollama" data-provider="ollama">
+              Local Offline (Ollama)
+            </button>
+          </div>
+          <span class="privacy-pill cloud" id="privacy-pill">Cloud Processing</span>
+        </div>
+      </div>
+      
+      <div class="header-meta">
+        <div class="meta-item">
+          <span class="meta-label">PROVIDER</span>
+          <span class="meta-value" id="stat-provider">Gemini</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">DOCUMENTS</span>
+          <span class="meta-value" id="stat-docs">0</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">INDEXED CHUNKS</span>
+          <span class="meta-value" id="stat-chunks">0</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">EMBEDDINGS</span>
+          <span class="meta-value" id="stat-embed">gemini-embedding-001</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">SYNTHESIS</span>
+          <span class="meta-value" id="stat-model">gemini-3.5-flash-lite</span>
+        </div>
+        <button id="btn-clear-db" class="btn-secondary" title="Wipe current vector index">Clear Index</button>
+      </div>
+    </header>
+
+    <!-- Ollama Offline Status Banner (hidden by default) -->
+    <div class="ollama-notice-banner hidden" id="ollama-notice-banner">
+      <div class="notice-content">
+        <span class="notice-tag">[OFFLINE PRIVACY NOTICE]</span>
+        <span class="notice-text" id="ollama-notice-text">
+          Ollama daemon not detected at <code>http://localhost:11434</code>. To use 100% offline privacy mode: start Ollama (<code>ollama serve</code>) and pull models: <code>ollama pull llama3.2</code> and <code>ollama pull nomic-embed-text</code>.
+        </span>
+      </div>
+      <button class="btn-notice-dismiss" id="btn-dismiss-notice">Dismiss</button>
+    </div>
+
+    <!-- Main Content Grid -->
+    <main class="main-layout">
+      
+      <!-- Section 1: Ingestion & Telemetry -->
+      <section class="panel ingestion-panel">
+        <div class="panel-header">
+          <h2>1. Knowledge Ingestion</h2>
+          <span class="panel-tag">PIPELINE INPUT</span>
+        </div>
+
+        <!-- Ingestion Tabs -->
+        <div class="tab-controls">
+          <button class="tab-btn active" data-tab="tab-upload">Upload File</button>
+          <button class="tab-btn" data-tab="tab-path">Local File Path</button>
+        </div>
+
+        <!-- Tab 1: Upload File -->
+        <div id="tab-upload" class="tab-content active">
+          <div class="drop-zone" id="drop-zone">
+            <input type="file" id="file-input" class="file-input" accept=".pdf,.docx,.txt,.md,.csv,.tsv,.json,.py,.js,.html,.css,.sql">
+            <div class="drop-zone-content">
+              <span class="drop-icon">[+]</span>
+              <p class="drop-title">Drag & drop any file here, or <span class="highlight">browse</span></p>
+              <p class="drop-hint">Supports PDF, DOCX, TXT, CSV, JSON, Markdown, Code</p>
+            </div>
+          </div>
+          <div id="selected-file-display" class="selected-file-display hidden">
+            <span class="file-name" id="selected-file-name">filename.pdf</span>
+            <button id="btn-submit-upload" class="btn-primary">Ingest & Vectorize File</button>
+          </div>
+        </div>
+
+        <!-- Tab 2: Local File Path -->
+        <div id="tab-path" class="tab-content">
+          <form id="form-path-ingest" class="path-form">
+            <label for="input-file-path" class="form-label">Absolute or Relative System Path</label>
+            <div class="input-action-group">
+              <input type="text" id="input-file-path" class="text-input" placeholder="e.g. C:\EnterpriseDocs\Q3_Report.pdf" required>
+              <button type="submit" class="btn-primary" id="btn-submit-path">Ingest Path</button>
+            </div>
+            <p class="form-help">Enter the full file path on this machine.</p>
+          </form>
+        </div>
+
+        <!-- Real-time Ingestion Telemetry -->
+        <div class="telemetry-box" id="ingestion-telemetry">
+          <div class="telemetry-header">
+            <h3>Background Ingestion Telemetry</h3>
+            <span class="telemetry-status" id="telemetry-status-badge">IDLE</span>
+          </div>
+
+          <!-- Stepper indicators -->
+          <div class="stepper">
+            <div class="step-item" id="step-parse">
+              <div class="step-badge">1</div>
+              <div class="step-text">
+                <span class="step-title">PARSE</span>
+                <span class="step-desc">Structure & Pages</span>
+              </div>
+            </div>
+            <div class="step-item" id="step-chunk">
+              <div class="step-badge">2</div>
+              <div class="step-text">
+                <span class="step-title">CHUNK</span>
+                <span class="step-desc">Semantic Blocks</span>
+              </div>
+            </div>
+            <div class="step-item" id="step-embed">
+              <div class="step-badge">3</div>
+              <div class="step-text">
+                <span class="step-title">EMBED</span>
+                <span class="step-desc">Vectorization</span>
+              </div>
+            </div>
+            <div class="step-item" id="step-index">
+              <div class="step-badge">4</div>
+              <div class="step-text">
+                <span class="step-title">INDEX</span>
+                <span class="step-desc">ChromaDB Store</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live Log Console -->
+          <div class="log-console" id="ingest-log-console">
+            <div class="log-line text-muted">[SYSTEM] Pipeline standby. Awaiting document input...</div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Section 2: Query & Grounded Response Console -->
+      <section class="panel query-panel">
+        <div class="panel-header">
+          <h2>2. Grounded Query & Retrieval</h2>
+          <span class="panel-tag">CITATIONS ENGINE</span>
+        </div>
+
+        <!-- Query Form with Dual-Stage Privacy Enforcement -->
+        <form id="form-query" class="query-form">
+          <div class="query-controls-bar">
+            <div class="privacy-status-pill">
+              <span class="privacy-dot-active"></span>
+              <span class="privacy-status-text">Enterprise Privacy &amp; Secret Data Guard: <strong>ACTIVE (Zero Egress)</strong></span>
+            </div>
+            <div class="privacy-policy-tag">
+              <span>Automatic Pre-Generation Filtering &bull; Output Verification</span>
+            </div>
+          </div>
+          <div class="query-input-wrapper">
+            <input type="text" id="query-input" class="query-input" placeholder="Ask any enterprise question grounded in the ingested documents..." required autocomplete="off">
+            <button type="submit" class="btn-primary" id="btn-submit-query">Run Privacy Query</button>
+          </div>
+        </form>
+
+        <!-- Query Telemetry Indicator with Dual-Stage Pipeline -->
+        <div id="query-telemetry-indicator" class="query-telemetry-indicator hidden">
+          <div class="query-stepper">
+            <span class="q-step" id="qstep-search">1. RETRIEVE</span>
+            <span class="q-arrow">&rarr;</span>
+            <span class="q-step" id="qstep-stage1">2. STAGE 1: PRIVACY FILTER</span>
+            <span class="q-arrow">&rarr;</span>
+            <span class="q-step" id="qstep-synth">3. LOCAL SYNTHESIS</span>
+            <span class="q-arrow">&rarr;</span>
+            <span class="q-step" id="qstep-stage2">4. STAGE 2: LEAKAGE GUARD</span>
+          </div>
+          <span class="query-status-text" id="query-status-text">Executing query...</span>
+        </div>
+
+        <!-- Answer Display -->
+        <div class="response-container" id="response-container">
+          <div class="response-header">
+            <h3>Grounded Answer (with Citations)</h3>
+            <span class="timing-badge" id="response-time-badge">0 ms</span>
+          </div>
+
+          <!-- Dual-Stage Privacy Enforcement Telemetry Audit Card -->
+          <div class="privacy-audit-card hidden" id="privacy-audit-card">
+            <div class="privacy-audit-header">
+              <div class="audit-title-group">
+                <span class="audit-badge" id="audit-status-badge">ZERO LEAKAGE VERIFIED</span>
+                <span class="audit-title">Dual-Stage Privacy Enforcement Certificate</span>
+              </div>
+              <span class="audit-mode" id="audit-mode-text">100% Air-Gapped Offline</span>
+            </div>
+            <div class="privacy-stages-grid">
+              <!-- Stage 1 Metric Box -->
+              <div class="stage-metric-box">
+                <div class="stage-box-header">
+                  <span class="stage-num">STAGE 1</span>
+                  <span class="stage-name">Query &amp; Context Privacy Filter</span>
+                </div>
+                <div class="stage-stats">
+                  <div class="stage-stat-item">
+                    <span class="stat-num" id="s1-status">PASSED</span>
+                    <span class="stat-lbl">Filter Status</span>
+                  </div>
+                  <div class="stage-stat-item">
+                    <span class="stat-num" id="s1-category">NONE</span>
+                    <span class="stat-lbl">Sensitive Category</span>
+                  </div>
+                  <div class="stage-stat-item">
+                    <span class="stat-num" id="s1-rule">PASSED</span>
+                    <span class="stat-lbl">Policy Evaluation</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Stage 2 Metric Box -->
+              <div class="stage-metric-box">
+                <div class="stage-box-header">
+                  <span class="stage-num">STAGE 2</span>
+                  <span class="stage-name">Output Leakage Prevention Guard</span>
+                </div>
+                <div class="stage-stats">
+                  <div class="stage-stat-item">
+                    <span class="stat-num" id="s2-verdict">PASS</span>
+                    <span class="stat-lbl">Verification Seal</span>
+                  </div>
+                  <div class="stage-stat-item">
+                    <span class="stat-num" id="s2-leakage">NONE</span>
+                    <span class="stat-lbl">Leakage Status</span>
+                  </div>
+                  <div class="stage-stat-item">
+                    <span class="stat-num" id="s2-latency">0ms</span>
+                    <span class="stat-lbl">Privacy Latency</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="answer-box" id="answer-box">
+            <p class="placeholder-text">Submit a query above to retrieve context passages and generate a grounded synthesis with citations.</p>
+          </div>
+
+          <!-- Evidence & Citations Section -->
+          <div class="citations-section hidden" id="citations-section">
+            <div class="citations-header">
+              <h4>Verifiable Citations & Source Evidence</h4>
+              <span class="citation-count" id="citation-count-badge">0 Sources</span>
+            </div>
+            <div class="citations-grid" id="citations-grid">
+              <!-- Dynamically populated citation cards -->
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <span>Enterprise Knowledge RAG Engine &bull; Zero Hallucination Mode &bull; Fully Local Storage</span>
+      <span id="footer-system-mode">Mode: Local Offline / API Configured</span>
+    </footer>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
